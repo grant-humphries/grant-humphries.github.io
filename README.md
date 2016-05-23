@@ -1,4 +1,4 @@
 grant-humphries.github.io
 =========================
 
-website to display my cartography portfolio
+website to share my work in coding and cartography
