@@ -1,2 +1,6 @@
 # intellij config
 .idea/
+
+# jekyll files
+_site/
+
