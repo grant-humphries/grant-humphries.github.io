@@ -25,10 +25,10 @@ GetModule(join(ARCOBJECTS_DIR, 'esriDataSourcesGDB.olb'))
 from comtypes.gen.esriDataSourcesGDB import FileGDBWorkspaceFactory
 ```
 
-ESRI has published a tutorial on Network Dataset creation with ArcObjects using VB.NET and C# so carrying this outin python is just a matter of translating those guides.  This is what was done in the Stack Exchange post, and although the settings on my network were different in some cases this gave me a starting point.  Below is a snippet of the VB code from the tutorial:
+ESRI has published a tutorial on Network Dataset creation with ArcObjects using VB.NET and C# so carrying this out in python is just a matter of translating that guide.  This is what was done in the Stack Exchange post, and although the settings on my network were different in some cases it gave me a starting point.  Below is a snippet of the VB code from the tutorial:
 
 ```vbnet
-Dim gdbPath As String = "C:/Program Files/ArcGIS/DeveloperKit10.0/Samples/data/SanFrancisco.gdb"
+Dim gdbPath As String = "C:/Program Files/ArcGIS/data/SanFrancisco.gdb"
 Dim featDataset As String = "Transportation"
 
 ' Create an empty data element for a buildable network dataset.
@@ -42,7 +42,7 @@ Dim gdbFWS As IFeatureWorkspace = CType(gdbWSF.OpenFromFile(gdbPath, 0), IFeatur
 Dim fdsGDS As IGeoDataset = CType(gdbFWS.OpenFeatureDataset(featDataset), IGeoDataset)
 ```
 
-In order to more easily mimic VB [this post](http://gis.stackexchange.com/questions/129456/guidelines-for-using-arcobjects-from-python) recommends create the following functions.  These are just simple wrappers on comtypes functions, but they emulate VB.NET functionality more closely and are less verbose which, given how often they need to be called, is meaningful:
+In order to more easily mimic VB in python [this post](http://gis.stackexchange.com/questions/129456/guidelines-for-using-arcobjects-from-python) recommends creating the following functions.  These are just simple wrappers on comtypes functions, but they emulate VB.NET functionality more closely and are less verbose which, given how often they need to be called, is meaningful:
 
 ```python
 from comtypes.client import CreateObject
@@ -64,10 +64,10 @@ def ctype(obj, interface):
 
 ArcObjects are mostly comprised of classes (objects) and interfaces.  The `new_obj` function creates a new instance of class and applies the supplied interface and `ctype` changes the interface of an existing object.  In ArcObjects classes often have many interfaces and each one allows access to different properties and methods of a class.
 
-With those in place and the needed ArcObjects imported the conversion of the VB snippet to python looks like this:
+With those in place and the needed ArcObjects imported the conversion of the VB snippet looks like this:
 
 ```python
-gdb_path = 'C:/Program Files/ArcGIS/DeveloperKit10.0/Samples/data/SanFrancisco.gdb'
+gdb_path = 'C:/Program Files/ArcGIS/data/SanFrancisco.gdb'
 feat_dataset = 'Transportation'
 
 # create an empty data element for a buildable network dataset
