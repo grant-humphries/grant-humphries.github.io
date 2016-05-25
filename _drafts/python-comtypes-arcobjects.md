@@ -7,15 +7,14 @@ title: Building an ArcGIS Network Dataset with Python
 
 Beginning about three years ago I inherited a project that had been undertaken at the request of our planning department and which aims to identify the amount of real estate development that has occurred near MAX stops due to their line’s creation.  In years past the work had been done essentially by hand and as I've intermittently updated the project I've been working to fully automate it.  As of the last pass there was just one piece of the process left that I had been unable to script: creating what ESRI calls a Network Dataset.
 
-A [Network Dataset](http://desktop.arcgis.com/en/arcmap/latest/extensions/network-analyst/what-is-a-network-dataset.htm) is a routable network that can be configured to have various impedances and is derived from a street centerline file (in this case OpenStreetMap data).  I use this network to generate [isochrones](https://en.wikipedia.org/wiki/Isochrone_map) that illustrate the areas that can be reached from the MAX stations via the street and trail network with a half mile walk or less.  However `arcpy`, the python package that I use for scripting with ESRI products, does not have the capability to create these.  In light of this I thought that I would be forced to either continue creating these with the UI in ArcMap or use a different language until I came across [this post](http://gis.stackexchange.com/questions/109779) on GIS Stack Exchange that uses ArcObjects and the `comtypes` python package to carry out this task.
+A [Network Dataset](http://desktop.arcgis.com/en/arcmap/latest/extensions/network-analyst/what-is-a-network-dataset.htm) is a routable network that can be configured to have various impedances and is derived from a street centerline file (in this case OpenStreetMap data).  I use this network to generate [isochrones](https://en.wikipedia.org/wiki/Isochrone_map) that illustrate the areas that can be reached from the MAX stations via the street and trail network with a half mile walk or less.  However `arcpy`, the Python package that I use for scripting with ESRI products, does not have the capability to create these networks.  In light of this it looked like I would be forced to either continue creating them with the UI in ArcMap (which takes several minutes each time) or use a different language (which would also require the establishment of a new development environment) until I came across [this post](http://gis.stackexchange.com/questions/109779) on GIS Stack Exchange that uses ArcObjects and the `comtypes` Python package to carry out this task.
 
-[ArcObjects](https://en.wikipedia.org/wiki/ArcObjects) underlie all of the ArcGIS Desktop products (anything that can be done with a desktop product can be done with ArcObjects), and though written primarily in C++, are a library of COM components.  [COM](https://en.wikipedia.org/wiki/Component_Object_Model) (Component Object Model) is a language neutral way of implementing objects that can be used in environments different from the one they were created in.  Documentation for ArcObjects generally illustrates their use with C#, Java and VB.NET, but python is also a COM-compatible language and comtypes makes them fairly easy to work with. 
+[ArcObjects](https://en.wikipedia.org/wiki/ArcObjects) underlie all of the ArcGIS Desktop products (anything that can be done with a desktop product can be done with ArcObjects), and though written primarily in C++, are a library of COM components.  [COM](https://en.wikipedia.org/wiki/Component_Object_Model) (Component Object Model) is a language neutral way of implementing objects that can be used in environments different from the one they were created in.  Documentation for ArcObjects generally illustrates their use with C#, Java and VB.NET, but Python is also a COM-compatible language and comtypes makes them fairly easy to work with. 
 
-ArcObjects can be accessed in python by providing the file path at which a COM component is stored to comtypes `GetModule` function, which looks something like this: 
+ArcObjects can be accessed in Python by providing the file path of a COM component to comtypes `GetModule` function, which looks something like this: 
 
 ```python
 from os.path import join
-
 from arcpy import GetInstallInfo
 from comtypes.client import GetModule
 
@@ -25,7 +24,7 @@ GetModule(join(ARCOBJECTS_DIR, 'esriDataSourcesGDB.olb'))
 from comtypes.gen.esriDataSourcesGDB import FileGDBWorkspaceFactory
 ```
 
-ESRI has published a tutorial on Network Dataset creation with ArcObjects using VB.NET and C# so carrying this out in python is just a matter of translating that guide.  This is what was done in the Stack Exchange post, and although the settings on my network were different in some cases it gave me a starting point.  Below is a snippet of the VB code from the tutorial:
+ESRI has published a tutorial on Network Dataset creation with ArcObjects using VB.NET and C# so carrying this out in Python is just a matter of translating that guide.  This is what was done in the Stack Exchange post, and although the settings on my network were different in some cases it provided a strong basis to get started with the conversion.  Below is a snippet of the VB code from the tutorial:
 
 ```vbnet
 Dim gdbPath As String = "C:/Program Files/ArcGIS/data/SanFrancisco.gdb"
@@ -42,7 +41,7 @@ Dim gdbFWS As IFeatureWorkspace = CType(gdbWSF.OpenFromFile(gdbPath, 0), IFeatur
 Dim fdsGDS As IGeoDataset = CType(gdbFWS.OpenFeatureDataset(featDataset), IGeoDataset)
 ```
 
-In order to more easily mimic VB in python [this post](http://gis.stackexchange.com/questions/129456/guidelines-for-using-arcobjects-from-python) recommends creating the following functions.  These are just simple wrappers on comtypes functions, but they emulate VB.NET functionality more closely and are less verbose which, given how often they need to be called, is meaningful:
+In order to more easily mimic VB in Python [this post](http://gis.stackexchange.com/questions/129456), which details best practices for these tools, recommends creating the following functions.  These are just simple wrappers on comtypes functions, but they emulate VB.NET syntax more closely and are a little more terse which, given how often they need to be called, is meaningful:
 
 ```python
 from comtypes.client import CreateObject
@@ -62,9 +61,7 @@ def ctype(obj, interface):
     return pointer
 ```
 
-ArcObjects are mostly comprised of classes (objects) and interfaces.  The `new_obj` function creates a new instance of class and applies the supplied interface and `ctype` changes the interface of an existing object.  In ArcObjects classes often have many interfaces and each one allows access to different properties and methods of a class.
-
-With those in place and the needed ArcObjects imported the conversion of the VB snippet looks like this:
+ArcObjects are mostly comprised of classes (objects) and interfaces.  The `new_obj` function creates a new instance of class and applies the supplied interface and `ctype` changes the interface of an existing object.  In ArcObjects classes often have many compatible interfaces and each one allows access to different properties and methods of a class.  With those in place and the needed ArcObjects imported the conversion of the VB snippet looks like this:
 
 ```python
 gdb_path = 'C:/Program Files/ArcGIS/data/SanFrancisco.gdb'
@@ -80,14 +77,16 @@ gdb_fws = ctype(gdb_wsf.OpenFromFile(gdb_path, 0), IFeatureWorkspace)
 fds_gds = ctype(gdb_fws.OpenFeatureDataset(feat_dataset), IGeoDataset)
 ```
 
-As you can see most of the VB/python conversion is straight forward, but occasionally there is some VB syntax that does something that isn't really possible in python.  An example from the tutorial:
+As you can see most of the VB-Python conversion is straightforward, but occasionally there is some VB syntax that does something that isn't really possible in Python.  An example from the tutorial:
 
 ```vbnet
-evalNetAttr.Evaluator(edgeNetSource, esriNetworkEdgeDirection.esriNEDAgainstDigitized) _
+evalNetAttr.Evaluator( _
+        edgeNetSource, _
+        esriNetworkEdgeDirection.esriNEDAgainstDigitized) _
     = CType(netFieldEval, INetworkEvaluator)
 ```
 
-The problem here is that python doesn't allow an object to be assigned to a method call as is being done above.  This had me baffled for awhile, but using a combination of the python builtin `dir()` to discover the properties and methods of the objects involved and the [ArcObjects docs](http://resources.arcgis.com/en/help/arcobjects-net/componenthelp/index.html) I was able put together this solution:
+The problem here is that Python doesn't allow an object to be assigned to a method call as is being done above.  This had me baffled for awhile, but using a combination of the Python builtin `dir()` to discover the properties and methods of the objects involved and the [ArcObjects docs](http://resources.arcgis.com/en/help/arcobjects-net/componenthelp/index.html) I was able put together this solution:
 
 ```python
 eval_net attr.Evaluator.setter(
@@ -95,17 +94,43 @@ eval_net attr.Evaluator.setter(
     ctype(net_field_eval, INetworkEvaluator))
 ```
 
-The full VB.NET/C# walk-through can be found [here](http://resources.arcgis.com/en/help/arcobjects-net/conceptualhelp/index.html#/How_to_create_a_network_dataset/0001000000w7000000/) and my python code that creates a Network Dataset is [here](https://github.com/grant-humphries/dev-near-light-rail/blob/master/lightraildev/create_network_dataset.py).  See the notes below for other
+So these are some the basics of working with Python and ArcObjects for network creation and more broadly as well.  ESRI's VB.NET/C# Network Dataset walk-through can be found [here](http://resources.arcgis.com/en/help/arcobjects-net/conceptualhelp/index.html#/How_to_create_a_network_dataset/0001000000w7000000/) and the full code for my script that creates a similar network with Python is [here](https://github.com/grant-humphries/dev-near-light-rail/blob/master/lightraildev/create_network_dataset.py).  I'll close below with a few notes on issues that I ran into along the way that may be of use to others:
 
- Here are a couple more resources that helped me get going with ArcObjects and python.
+* The downside to working in this environment is that the error messages that the COM objects return are often cryptic and unhelpful.  For instance, I initially wanted to create the Network Dataset from a shapefile and translated [this version](http://edndoc.esri.com/arcobjects/9.2/NET/06443414-d0a7-455d-a199-dfd49aca7d98.htm) of the guide which does that pretty exactly, but ended up with an error that gave me basically no leads.  I eventually ended up converting the shapefile to a file geodatabase and things worked from there.  The moral here is that you will likely run into these kinds of road blocks so be prepared to get creative (and drop me a line if you figure out how to create a network from a shapefile!). 
+* There is an ArcObjects class called `esriSystem.Array` which is an array that can hold other ArcObjects, however Python throws an error when I attempt to create an instance of this class.  I was unable to find the cause of this, but I did find a work around in [this presentation](http://www.pierssen.com/arcgis10/upload/python/arcmap_and_python.pdf).  That hack is illustrated below:
 
-#### Notes for blog post
+    ```python
+    from comtypes.gen.esriSystem import IArray
+    
+    ARRAY_GUID = '{8F2B6061-AB00-11D2-87F4-0000F8751720}'
+    ao_array = new_obj(ARRAY_GUID, IArray)
+    ```
 
-* Used VBA for network attributes, executes much faster than python
-* Seemingly random string for arcobjects array object
-    * for some reason esriSystem.Array objects can't be created normally via comtypes, I found a workaround on pg 7 of the linked pdf, below is the object's GUID which can be supplied in place of the object
-    * http://www.pierssen.com/arcgis10/upload/python/arcmap_and_python.pdf
-    * ARRAY_GUID = "{8F2B6061-AB00-11D2-87F4-0000F8751720}"
-* The downside with work with these tools is the nonsensical error messages
-* Illustrate the code I had to translate that had the weird form of the function call that I figured out how to do in python
-    * Learned the value of dir()
+* Key to configuring a network are what are called Network Attributes.  These settings determine things such as street traversablilty and .  The logic for these attributes must be passed to an ArcObjects method as either VBA or Python code.  I couldn't get Python to work in this environment, but later read in the ESRI docs that VBA is preferred as it executes significantly faster.  I found this to be true as compared to when I had created the network with the UI and supplied a python function in the past.  Below is a VBA script that use to set pedestrian permission in the form a of python string:
+
+    ```python
+    logic = (
+        'Set foot_list = CreateObject("System.Collections.ArrayList")'   '\n'
+        'foot_list.Add "designated"'                                     '\n'
+        'foot_list.Add "permissive"'                                     '\n'
+        'foot_list.Add "yes"'                                          '\n\n'
+
+        'Set hwy_list = CreateObject("System.Collections.ArrayList")'    '\n'
+        'hwy_list.Add "construction"'                                    '\n'
+        'hwy_list.Add "motorway"'                                        '\n'
+        'hwy_list.Add "trunk"'                                         '\n\n'
+
+        'If foot_list.Contains([foot]) Then'                             '\n'
+        '    restricted = False'                                         '\n'
+        'ElseIf _'                                                       '\n'
+        '        ([access] = "no") Or _'                                 '\n'
+        '        ([foot] = "no") Or _'                                   '\n'
+        '        ([indoor] = "yes") Or _'                                '\n'
+        '        (hwy_list.Contains([highway])) Then'                    '\n'
+        '    restricted = True'                                          '\n'
+        'Else'                                                           '\n'
+        '    restricted = False'                                         '\n'
+        'End If'
+    )
+    ```
+* Last, [here](http://gis.stackexchange.com/questions/109779) are the [links](http://gis.stackexchange.com/questions/80), all in one place, to the GIS Stack Exchange [posts](http://gis.stackexchange.com/questions/129456) that helped me get going with this project.  The third link has an response that does a good job explaining how to find where the various classes and interfaces are located within the COM objects and how to import them into Python with comtypes.
